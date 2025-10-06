@@ -1,92 +1,84 @@
-// Update in mongodb.js
-
 const { MongoClient } = require('mongodb');
-const fs = require('fs');
-const path = require('path');
-const colors = require('./UI/colors/colors');
-const configPath = path.join(__dirname, 'config.json');
-
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
-const uri = config.mongodbUri || process.env.MONGODB_URI;
-const client = new MongoClient(uri);
-
 const mongoose = require('mongoose');
+const colors = require('./UI/colors/colors');
+
+let db;
+let collections = {};
+let giveawayCollection;
 
 async function connectToDatabase() {
+    const uri = process.env.MONGODB_URI;
+
+    if (!uri) {
+        console.error("❌ MONGODB_URI is not defined! Set it in Render Environment variables.");
+        process.exit(1);
+    }
+
+    const client = new MongoClient(uri);
+
     try {
         await client.connect();
+        db = client.db("discord-bot");
+
         console.log('\n' + '─'.repeat(40));
         console.log(`${colors.magenta}${colors.bright}🕸️  DATABASE CONNECTION${colors.reset}`);
         console.log('─'.repeat(40));
         console.log('\x1b[36m[ DATABASE ]\x1b[0m', '\x1b[32mConnected to MongoDB ✅\x1b[0m');
 
-       
+        // Connect mongoose as well
         await mongoose.connect(uri);
         console.log('\x1b[36m[ MONGOOSE ]\x1b[0m', '\x1b[32mConnected using Mongoose ✅\x1b[0m');
-        
-       
-        await initCollections();
+
+        // Initialize collections AFTER connection
+        collections = {
+            voiceChannelCollection: db.collection("voiceChannels"),
+            centralizedControlCollection: db.collection("centralizedControl"),
+            nqnCollection: db.collection("nqn"),
+            welcomeCollection: db.collection("welcomeChannels"),
+            autoroleCollection: db.collection("autorolesetups"),
+            hentaiCommandCollection: db.collection("hentailove"),
+            serverConfigCollection: db.collection("serverconfig"),
+            reactionRolesCollection: db.collection("reactionRoles"),
+            antisetupCollection: db.collection("antisetup"),
+            anticonfigcollection: db.collection("anticonfiglist"),
+            afkCollection: db.collection("afk"),
+            notificationsCollection: db.collection("notifications"),
+            logsCollection: db.collection("logs"),
+            nicknameConfigs: db.collection("nicknameConfig"),
+            economyCollection: db.collection("economy"),
+            usersCollection: db.collection("users"),
+            epicDataCollection: db.collection("epicData"),
+            customCommandsCollection: db.collection("customCommands"),
+            birthdayCollection: db.collection("birthday"),
+            applicationCollection: db.collection("applications"),
+            serverLevelingLogsCollection: db.collection("serverLevelingLogs"),
+            commandLogsCollection: db.collection("commandLogs"),
+            reportsCollection: db.collection("reports"),
+            stickyMessageCollection: db.collection("stickymessages"),
+            serverStatsCollection: db.collection("serverStats"),
+            autoResponderCollection: db.collection("autoResponder"),
+            playlistCollection: db.collection("lavalinkplaylist"),
+            autoplayCollection: db.collection("autoplaylavalink"),
+            embedCollection: db.collection("aioembeds"),
+            countingCollection: db.collection("countingame"),
+            botStatusCollection: db.collection("bot_status"),
+            scheduleCollection: db.collection("scheduleCollections"),
+            gameAccountsCollection: db.collection("gameAccounts"),
+        };
+
+        // Giveaway collection with unique index
+        giveawayCollection = db.collection("giveaways");
+        await giveawayCollection.createIndex({ messageId: 1 }, { unique: true });
+        console.log('\x1b[36m[ COLLECTION ]\x1b[0m', '\x1b[32mGiveaway collection initialized ✅\x1b[0m');
 
     } catch (err) {
         console.error("❌ Error connecting to MongoDB or Mongoose", err);
     }
 }
 
-
-async function initCollections() {
-    giveawayCollection = db.collection('giveaways');
-    try {
-        await giveawayCollection.createIndex({ messageId: 1 }, { unique: true });
-        console.log('\x1b[36m[ COLLECTION ]\x1b[0m', '\x1b[32mGiveaway collection initialized ✅\x1b[0m');
-    } catch (err) {
-        console.error("❌ Error initializing giveaway collection", err);
-    }
-}
-
-const db = client.db("discord-bot");
-const voiceChannelCollection = db.collection("voiceChannels");
-const centralizedControlCollection = db.collection("centralizedControl"); 
-const nqnCollection = db.collection("nqn");
-const welcomeCollection = db.collection("welcomeChannels");
-const autoroleCollection = db.collection("autorolesetups");
-const hentaiCommandCollection = db.collection("hentailove");
-const serverConfigCollection = db.collection("serverconfig");
-const reactionRolesCollection = db.collection("reactionRoles");
-const antisetupCollection = db.collection("antisetup");
-const anticonfigcollection = db.collection("anticonfiglist");
-const afkCollection = db.collection('afk');
-const notificationsCollection = db.collection("notifications");
-const logsCollection = db.collection("logs");
-const nicknameConfigs = db.collection("nicknameConfig");
-const economyCollection = db.collection("economy"); 
-const usersCollection = db.collection('users'); 
-const epicDataCollection = db.collection('epicData');
-const customCommandsCollection = db.collection('customCommands');
-const birthdayCollection = db.collection('birthday'); 
-const applicationCollection = db.collection('applications'); 
-const serverLevelingLogsCollection = db.collection('serverLevelingLogs');
-const commandLogsCollection = db.collection('commandLogs');
-const reportsCollection = db.collection('reports'); 
-const stickyMessageCollection = db.collection('stickymessages');
-const serverStatsCollection = db.collection('serverStats');
-const autoResponderCollection = db.collection('autoResponder');
-const playlistCollection = db.collection('lavalinkplaylist');
-const autoplayCollection = db.collection('autoplaylavalink');
-const embedCollection = db.collection('aioembeds');
-const countingCollection = db.collection('countingame');
-const botStatusCollection = db.collection('bot_status');
-const scheduleCollection = db.collection('scheduleCollections')
-const gameAccountsCollection = db.collection('gameAccounts');
-
-let giveawayCollection;
-
+// Giveaway helpers
 async function saveGiveaway(giveaway) {
-    if (!giveawayCollection) {
-        console.error("Giveaway collection not initialized!");
-        return;
-    }
-    
+    if (!giveawayCollection) return console.error("Giveaway collection not initialized!");
     await giveawayCollection.updateOne(
         { messageId: giveaway.messageId },
         { $set: giveaway },
@@ -95,71 +87,22 @@ async function saveGiveaway(giveaway) {
 }
 
 async function getGiveaways() {
-    if (!giveawayCollection) {
-        console.error("Giveaway collection not initialized!");
-        return [];
-    }
-    
-    return await giveawayCollection.find().toArray();
+    return giveawayCollection ? await giveawayCollection.find().toArray() : [];
 }
 
 async function getGiveawayById(messageId) {
-    if (!giveawayCollection) {
-        console.error("Giveaway collection not initialized!");
-        return null;
-    }
-    
-    return await giveawayCollection.findOne({ messageId });
+    return giveawayCollection ? await giveawayCollection.findOne({ messageId }) : null;
 }
 
 async function deleteGiveaway(messageId) {
-    if (!giveawayCollection) {
-        console.error("Giveaway collection not initialized!");
-        return;
-    }
-    
-    await giveawayCollection.deleteOne({ messageId });
+    if (giveawayCollection) await giveawayCollection.deleteOne({ messageId });
 }
-
 
 module.exports = {
     connectToDatabase,
-    voiceChannelCollection,
-    centralizedControlCollection, 
-    nqnCollection,
-    welcomeCollection,
-    giveawayCollections: db.collection('giveaways'), 
+    ...collections,
     saveGiveaway,
     getGiveaways,
     getGiveawayById,
-    deleteGiveaway,
-    autoroleCollection,
-    hentaiCommandCollection,
-    serverConfigCollection,
-    reactionRolesCollection,
-    antisetupCollection,
-    notificationsCollection,
-    anticonfigcollection,
-    afkCollection,
-    logsCollection,
-    nicknameConfigs,
-    usersCollection,
-    epicDataCollection,
-    customCommandsCollection,
-    economyCollection,
-    birthdayCollection,
-    applicationCollection,
-    serverLevelingLogsCollection,
-    commandLogsCollection,
-    reportsCollection,
-    stickyMessageCollection,
-    serverStatsCollection,
-    autoResponderCollection,
-    playlistCollection,
-    autoplayCollection,
-    embedCollection,
-    countingCollection,
-    botStatusCollection,
-    scheduleCollection,
-    gameAccountsCollection,
+    deleteGiveaway
 };
