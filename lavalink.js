@@ -4,8 +4,8 @@ module.exports = {
     lavalink: {
       name: "GlaceYT",
       password: "glace",
-      host: "87.106.62.92",
-      port:  11642,
+      host: "us-01.strixnodes.co",
+      port:  8003,
       secure: false
     }
-};
+};           
