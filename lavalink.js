@@ -2,12 +2,13 @@
 module.exports = {
     enabled: true, 
     lavalink: {
-      name: "GlceYT",
-      password: "glace",
-      host: "de-01.strixnodes.com",
-      port: 2010,
-      secure: false
+            name: "GlaceYT2",
+            password: "glace",
+            host: "45.13.236.245",
+            port: 25582,
+            secure: false
     }
 };           
+
 
 
