@@ -2,13 +2,14 @@
 module.exports = {
     enabled: true, 
     lavalink: {
-            name: "GlaceYT2",
+            name: "GlaceYT",
             password: "glace",
-            host: "45.13.236.245",
-            port: 25582,
+            host: "ge-02.vortexa.cloud",
+            port: 11050,
             secure: false
     }
 };           
+
 
 
 
